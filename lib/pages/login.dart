@@ -1,0 +1,151 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:invest_app/services/snack_bar.dart';
+import 'package:email_validator/email_validator.dart';
+
+class Login extends StatefulWidget {
+  const Login({super.key});
+
+  @override
+  State<Login> createState() => _LoginState();
+}
+
+class _LoginState extends State<Login> {
+bool isHiddenPassword = true;
+  TextEditingController emailTextInputController = TextEditingController();
+  TextEditingController passwordTextInputController = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    emailTextInputController.dispose();
+    passwordTextInputController.dispose();
+
+    super.dispose();
+  }
+
+  void togglePasswordView() {
+    setState(() {
+      isHiddenPassword = !isHiddenPassword;
+    });
+  }
+
+  Future<void> login() async {
+    final navigator = Navigator.of(context);
+
+    final isValid = formKey.currentState!.validate();
+    if (!isValid) return;
+
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: emailTextInputController.text.trim(),
+        password: passwordTextInputController.text.trim(),
+      );
+    } on FirebaseAuthException catch (e) {
+      print(e.code);
+
+      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
+        SnackBarService.showSnackBar(
+          context,
+          'Wrong email or password. Try again',
+          true,
+        );
+        return;
+      } else {
+        SnackBarService.showSnackBar(
+          context,
+          'Unknown error! Try again or turn to support.',
+          true,
+        );
+        return;
+      }
+    }
+
+    navigator.pushNamedAndRemoveUntil('/home_page', (Route<dynamic> route) => false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      appBar: AppBar(
+        title: const Text('Login'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(30.0),
+        child: Form(
+          key: formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                controller: emailTextInputController,
+                validator: (email) =>
+                    email != null && !EmailValidator.validate(email)
+                        ? 'Enter the correct Email'
+                        : null,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'Enter Email',
+                ),
+              ),
+              const SizedBox(height: 30),
+              TextFormField(
+                autocorrect: false,
+                controller: passwordTextInputController,
+                obscureText: isHiddenPassword,
+                validator: (value) => value != null && value.length < 6
+                    ? 'Minimum 6 characters'
+                    : null,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  hintText: 'Enter the password',
+                  suffix: InkWell(
+                    onTap: togglePasswordView,
+                    child: Icon(
+                      isHiddenPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+              ElevatedButton(
+                style: ButtonStyle(
+                  backgroundColor: const MaterialStatePropertyAll(Color.fromRGBO(49, 160, 98, 1)),
+                  foregroundColor: const MaterialStatePropertyAll(Colors.white),
+                  shape: MaterialStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)))
+                  ),
+                onPressed: login,
+                child: Container(
+                  padding: const EdgeInsets.all(18),
+                  child: const Center(child: Text('Login',
+                  style: TextStyle(
+                    fontSize: 16
+                  ),
+                  )
+                  )
+                  ),
+              ),
+              const SizedBox(height: 30),
+              TextButton(
+                onPressed: () => Navigator.of(context).pushNamed('/registration'),
+                child: const Text(
+                  'Registration',
+                  style: TextStyle(
+                    color: Color.fromRGBO(49, 160, 98, 1),
+                    fontSize: 16
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
